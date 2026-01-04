@@ -1,0 +1,16 @@
+# binaries
+proxy
+*.out
+
+# build artifacts
+build/
+*.o
+
+# logs & runtime files
+*.log
+metrics.txt
+
+# editor / OS noise
+.vscode/
+.idea/
+.DS_Store
