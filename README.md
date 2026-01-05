@@ -15,8 +15,10 @@ The proxy sits between clients (for example, `curl` or a browser) and destinatio
 * HTTP request forwarding for standard methods such as `GET` and `POST`
 * HTTPS tunneling using the `CONNECT` method without TLS inspection
 * Thread‑pool‑based concurrency with blocking socket I/O
+* Robust handling of partial reads and partial writes on network sockets
 * Configurable listening address and port
 * Configurable thread pool size
+* Configurable socket timeouts to prevent stalled or hung connections
 * Domain‑based request blocking using a blocklist file
 * Exact‑match and subdomain blocklist support
 * Thread‑safe, append‑only request logging
@@ -25,6 +27,7 @@ The proxy sits between clients (for example, `curl` or a browser) and destinatio
 * Centralized configuration via `config/proxy.conf`
 * Runtime metrics tracking (requests, bytes, hosts, rate)
 * Metrics written to a dedicated `metrics.txt` file
+* Modular codebase with clear separation of concerns (parsing, forwarding, logging, metrics, configuration)
 
 ---
 
