@@ -9,7 +9,6 @@ struct RuntimeConfig
     std::string listen_address = "0.0.0.0";
     int listen_port = 8080;
     int thread_pool_size = 4;
-    int max_events = 64;
 
     size_t buffer_size = 4096;
     int default_http_port = 80;
