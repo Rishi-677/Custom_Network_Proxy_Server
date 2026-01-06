@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a **multithreaded HTTP/HTTPS proxy server** written in **C++**.
+This project is a **Multithreaded HTTP/HTTPS proxy server** written in **C++**.
 
 All architectural design decisions, execution flow, concurrency model, and flowcharts are documented in docs/design.md.
 
@@ -70,7 +70,7 @@ To build and run this proxy server, you need:
 
 * **Operating system**: Linux (tested on Ubuntu-based systems)
 * **Compiler**: `g++` with **C++17** support
-*  Recommended version: g++ 7.0 or newer
+  Recommended version: g++ 7.0 or newer
 * **Build tools**: `make`
 * **Networking tools (for testing)**: `curl`
 
