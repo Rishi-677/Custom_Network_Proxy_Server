@@ -66,14 +66,14 @@ Each worker thread owns **exactly one client connection at a time**. All request
 
 ### How the Model Works
 
-1. At startup, the server initializes a fixed-size thread pool.  
-2. The main thread listens for incoming client TCP connections.  
-3. When a client connects, the connection is accepted and enqueued as a task.  
-4. An available worker thread dequeues the task and assumes exclusive ownership of the connection.  
-5. The worker performs blocking read and write operations on the socket, handling partial reads and writes as needed.  
-6. Socket timeouts are applied to prevent workers from blocking indefinitely on idle or stalled connections.  
-7. The worker processes the request fully, including parsing, access control checks, and outbound communication.  
-8. Once the request completes or an error occurs, the worker closes the connection, updates logs and metrics, and returns to the task queue.
+- At startup, the server initializes a fixed-size thread pool.  
+- The main thread listens for incoming client TCP connections.  
+- When a client connects, the connection is accepted and enqueued as a task.  
+- An available worker thread dequeues the task and assumes exclusive ownership of the connection.  
+- The worker performs blocking read and write operations on the socket, handling partial reads and writes as needed.  
+- Socket timeouts are applied to prevent workers from blocking indefinitely on idle or stalled connections.  
+- The worker processes the request fully, including parsing, access control checks, and outbound communication.  
+- Once the request completes or an error occurs, the worker closes the connection, updates logs and metrics, and returns to the task queue.
 
 Multiple worker threads execute this flow concurrently, allowing the server to handle multiple client connections in parallel while maintaining a simple and deterministic execution model.
 
@@ -225,18 +225,35 @@ The proxy server handles errors at clearly defined boundaries to ensure failures
 
 ## Limitations
 
-1. The blocking thread-pool model limits scalability, as each active connection occupies a worker thread.
-
-2. Only HTTP/1.0 semantics are supported; persistent connections and newer HTTP versions are not handled.
-
-3. HTTPS traffic is tunneled without TLS inspection, limiting visibility into encrypted content.
-
-4. The proxy does not implement client authentication or authorization mechanisms.
-
-5. The proxy does not perform request or response caching, so repeated requests are always forwarded upstream.
+- The blocking thread-pool model limits scalability, as each active connection occupies a worker thread.
+- Only HTTP/1.0 semantics are supported; persistent connections and newer HTTP versions are not handled.
+- HTTPS traffic is tunneled without TLS inspection, limiting visibility into encrypted content.
+- The proxy does not implement client authentication or authorization mechanisms.
+- The proxy does not perform request or response caching, so repeated requests are always forwarded upstream.
 
 --- 
 
+## Security Considerations
+
+While not a security product, the proxy incorporates basic safety measures:
+
+- HTTPS traffic is handled using CONNECT-based tunneling, preserving end-to-end TLS encryption by avoiding decryption or modification of encrypted payloads.
+
+- Domain-based access control is enforced through a configurable blocklist, preventing connections to disallowed hosts at the proxy level.
+
+- Socket timeouts are applied to client and upstream connections to mitigate resource exhaustion from stalled or slow clients.
+
+- Bounded concurrency through a fixed-size thread pool prevents unbounded resource usage under high connection load.
+
+- Each client connection is handled in isolation within a worker thread, ensuring that failures or malformed requests do not affect other active connections.
+
+---
+
+## Summary
+
+The proxy server is a multithreaded HTTP/HTTPS intermediary that forwards client requests and tunnels encrypted traffic using a controlled thread-pool model.
+It enforces domain-based access control, handles partial network I/O, and provides robust observability through structured logging and runtime metrics.
+The design prioritizes correctness, clarity, and bounded resource usage while preserving end-to-end security for HTTPS traffic.
 
 
 
