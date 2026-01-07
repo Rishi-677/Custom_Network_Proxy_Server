@@ -63,7 +63,6 @@ The main server thread is responsible only for accepting incoming TCP connection
 
 Each worker thread owns **exactly one client connection at a time**. All request parsing, policy enforcement, forwarding, tunneling, logging, and cleanup are performed synchronously within the worker using blocking I/O operations.
 
----
 
 ### How the Model Works
 
@@ -78,7 +77,6 @@ Each worker thread owns **exactly one client connection at a time**. All request
 
 Multiple worker threads execute this flow concurrently, allowing the server to handle multiple client connections in parallel while maintaining a simple and deterministic execution model.
 
----
 
 ### Rationale: Advantages and Trade-offs
 
@@ -98,7 +96,6 @@ Multiple worker threads execute this flow concurrently, allowing the server to h
 - Blocking I/O can reduce scalability under very high connection counts  
 - Less efficient than event-driven models for large numbers of idle clients  
 
----
 
 This concurrency model was chosen to prioritize **correctness, clarity, and robustness** over maximum throughput, while still providing true parallel request handling.
 
@@ -107,7 +104,6 @@ This concurrency model was chosen to prioritize **correctness, clarity, and robu
 
 This section describes how data flows through the proxy server during request handling, from the moment a client connection is accepted to the completion of outbound forwarding or tunneling. The flow is divided into logical phases to reflect responsibility boundaries within the system.
 
----
 
 ### Connection Acceptance and Assignment
 
@@ -115,7 +111,6 @@ This section describes how data flows through the proxy server during request ha
 
 - An available worker thread dequeues the task and assumes exclusive ownership of the client connection for its entire lifetime. From this point onward, all processing occurs within the context of that worker thread.
 
----
 
 ### Request Reading and Parsing
 
@@ -123,7 +118,6 @@ This section describes how data flows through the proxy server during request ha
 
 - Once sufficient data is available, the HTTP request is parsed to extract essential fields such as the request method, target host, port, and request path. Requests that are malformed or incomplete are rejected early, and the connection is closed without initiating any outbound communication.
 
----
 
 ### Policy Evaluation
 
@@ -131,7 +125,6 @@ This section describes how data flows through the proxy server during request ha
 
 - If the request is blocked, the worker sends an appropriate error response (for example, `403 Forbidden`) to the client and terminates the connection. If the request is allowed, processing continues to outbound communication.
 
----
 
 ### Outbound Communication
 
@@ -141,7 +134,6 @@ The outbound handling phase depends on the request type.
 
 - For **HTTPS CONNECT requests**, the worker establishes a TCP connection to the specified target host and port and responds to the client with a `200 Connection Established` message. The worker then enters a bidirectional tunneling phase, transparently forwarding raw bytes between client and server without inspecting or modifying encrypted data. The tunnel remains active until either side closes the connection or a timeout occurs.
 
----
 
 ### Completion, Logging, and Metrics
 
@@ -149,9 +141,10 @@ The outbound handling phase depends on the request type.
 
 - A structured log entry is written to record the outcome of the request. The worker then returns to the task queue, ready to process the next client connection.
 
----
 
 This staged data flow ensures that request handling is predictable and failures are contained within individual connections without affecting the overall stability of the proxy server.
+
+---
 
 
 ## Logging and Metrics
@@ -159,7 +152,6 @@ This staged data flow ensures that request handling is predictable and failures 
 The proxy server includes dedicated subsystems for logging and metrics collection to provide observability into both historical behavior and current runtime state. 
 Logging and metrics are intentionally treated as separate concerns to avoid conflating event history with aggregated statistics.
 
----
 
 ### Logging
 
@@ -176,7 +168,6 @@ Example:
 [2026-01-04 00:12:07] 127.0.0.1:53110 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=782
 ```
 
----
 
 ### Metrics
 
@@ -195,6 +186,61 @@ bytes_transferred=15640
 requests_per_minute=12.4
 top_hosts=example.com(6), google.com(2), github.com(2)
 ```
+
+---
+
+## Error Handling and Failure Management
+
+The proxy server handles errors at clearly defined boundaries to ensure failures are isolated to individual connections and do not impact overall system stability.
+
+### Startup and Configuration Errors
+
+- Errors during initialization, such as invalid configuration, missing files, or socket binding failures, are treated as fatal. The server terminates to avoid running in an undefined state.
+
+### Connection Acceptance Errors
+
+- Transient errors while accepting client connections are logged and ignored. The server continues accepting new connections without affecting existing clients.
+
+### Request Read and Parse Errors
+
+- Errors encountered while reading or parsing client requests—including partial reads, malformed requests, client disconnects, or read timeouts—result in immediate connection termination without outbound communication.
+
+### Policy Enforcement Errors
+
+- Blocked requests are treated as expected outcomes. A `403 Forbidden` response is returned, the event is logged, and the connection is closed cleanly.
+
+### Outbound Communication Errors
+
+- Failures such as DNS resolution errors, upstream connection failures, or read/write errors during forwarding are handled per request. The worker logs the failure, updates metrics, closes all sockets, and releases resources.
+
+### Timeout Handling
+
+- Socket timeouts are enforced to prevent workers from blocking indefinitely on idle or stalled connections. On timeout, the connection is terminated and resources are reclaimed.
+
+### Graceful Shutdown Handling
+
+- During shutdown, the server stops accepting new connections and allows active requests to complete. All resources are closed cleanly, and shutdown events are logged.
+
+---
+
+## Limitations
+
+1. The blocking thread-pool model limits scalability, as each active connection occupies a worker thread.
+
+2. Only HTTP/1.0 semantics are supported; persistent connections and newer HTTP versions are not handled.
+
+3. HTTPS traffic is tunneled without TLS inspection, limiting visibility into encrypted content.
+
+4. The proxy does not implement client authentication or authorization mechanisms.
+
+5. The proxy does not perform request or response caching, so repeated requests are always forwarded upstream.
+
+--- 
+
+
+
+
+
 
 
 
