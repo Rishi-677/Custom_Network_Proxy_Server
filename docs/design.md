@@ -111,25 +111,25 @@ This section describes how data flows through the proxy server during request ha
 
 ### Connection Acceptance and Assignment
 
--When a client initiates a TCP connection to the proxy, the main server thread accepts the connection on the listening socket. The accepted socket is wrapped as a task and enqueued into the shared task queue managed by the thread pool.
+- When a client initiates a TCP connection to the proxy, the main server thread accepts the connection on the listening socket. The accepted socket is wrapped as a task and enqueued into the shared task queue managed by the thread pool.
 
--An available worker thread dequeues the task and assumes exclusive ownership of the client connection for its entire lifetime. From this point onward, all processing occurs within the context of that worker thread.
+- An available worker thread dequeues the task and assumes exclusive ownership of the client connection for its entire lifetime. From this point onward, all processing occurs within the context of that worker thread.
 
 ---
 
 ### Request Reading and Parsing
 
--The worker thread reads data from the client socket using blocking I/O. Since TCP is a stream-oriented protocol, the worker explicitly handles partial reads and assembles incoming data until a complete HTTP request header is received.
+- The worker thread reads data from the client socket using blocking I/O. Since TCP is a stream-oriented protocol, the worker explicitly handles partial reads and assembles incoming data until a complete HTTP request header is received.
 
--Once sufficient data is available, the HTTP request is parsed to extract essential fields such as the request method, target host, port, and request path. Requests that are malformed or incomplete are rejected early, and the connection is closed without initiating any outbound communication.
+- Once sufficient data is available, the HTTP request is parsed to extract essential fields such as the request method, target host, port, and request path. Requests that are malformed or incomplete are rejected early, and the connection is closed without initiating any outbound communication.
 
 ---
 
 ### Policy Evaluation
 
--After successful parsing, the extracted destination host is evaluated against the configured blocklist. This policy check determines whether the request is permitted to proceed.
+- After successful parsing, the extracted destination host is evaluated against the configured blocklist. This policy check determines whether the request is permitted to proceed.
 
--If the request is blocked, the worker sends an appropriate error response (for example, `403 Forbidden`) to the client and terminates the connection. If the request is allowed, processing continues to outbound communication.
+- If the request is blocked, the worker sends an appropriate error response (for example, `403 Forbidden`) to the client and terminates the connection. If the request is allowed, processing continues to outbound communication.
 
 ---
 
@@ -137,20 +137,67 @@ This section describes how data flows through the proxy server during request ha
 
 The outbound handling phase depends on the request type.
 
--For **HTTP requests**, the worker establishes a TCP connection to the upstream server and forwards the rewritten request using HTTP/1.0 semantics. The response from the upstream server is read incrementally and relayed back to the client, with partial writes handled explicitly. Once the response is fully transmitted, both connections are closed.
+- For **HTTP requests**, the worker establishes a TCP connection to the upstream server and forwards the rewritten request using HTTP/1.0 semantics. The response from the upstream server is read incrementally and relayed back to the client, with partial writes handled explicitly. Once the response is fully transmitted, both connections are closed.
 
--For **HTTPS CONNECT requests**, the worker establishes a TCP connection to the specified target host and port and responds to the client with a `200 Connection Established` message. The worker then enters a bidirectional tunneling phase, transparently forwarding raw bytes between client and server without inspecting or modifying encrypted data. The tunnel remains active until either side closes the connection or a timeout occurs.
+- For **HTTPS CONNECT requests**, the worker establishes a TCP connection to the specified target host and port and responds to the client with a `200 Connection Established` message. The worker then enters a bidirectional tunneling phase, transparently forwarding raw bytes between client and server without inspecting or modifying encrypted data. The tunnel remains active until either side closes the connection or a timeout occurs.
 
 ---
 
 ### Completion, Logging, and Metrics
 
--After request processing completes—whether due to normal completion, error, or timeout—the worker performs cleanup operations. Client and upstream sockets are closed, and runtime metrics such as request counts and bytes transferred are updated.
+- After request processing completes—whether due to normal completion, error, or timeout—the worker performs cleanup operations. Client and upstream sockets are closed, and runtime metrics such as request counts and bytes transferred are updated.
 
--A structured log entry is written to record the outcome of the request. The worker then returns to the task queue, ready to process the next client connection.
+- A structured log entry is written to record the outcome of the request. The worker then returns to the task queue, ready to process the next client connection.
 
 ---
 
 This staged data flow ensures that request handling is predictable and failures are contained within individual connections without affecting the overall stability of the proxy server.
+
+
+## Logging and Metrics
+
+The proxy server includes dedicated subsystems for logging and metrics collection to provide observability into both historical behavior and current runtime state. 
+Logging and metrics are intentionally treated as separate concerns to avoid conflating event history with aggregated statistics.
+
+---
+
+### Logging
+
+- The logging subsystem records a persistent, append-only history of server activity. 
+- It captures significant events such as server startup and shutdown.
+- It also stores incoming client requests, access control decisions, request outcomes, and the volume of data transferred.
+- Log entries are written in a thread-safe manner to ensure correctness under concurrent request handling. Each request generates a single structured log entry, allowing request-level behavior to be traced independently.
+
+Example:
+
+```bash
+[2026-01-03 22:22:16] 127.0.0.1:56974 | "CONNECT HTTP/1.0" | example.com:443 | ALLOWED | 200 | bytes=6105
+[2026-01-04 00:10:41] 127.0.0.1:52424 | "CONNECT HTTP/1.0" | example.net:443 | BLOCKED | 403 | bytes=0
+[2026-01-04 00:12:07] 127.0.0.1:53110 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=782
+```
+
+---
+
+### Metrics
+
+- The metrics subsystem maintains a snapshot of the proxy server’s current operational state. 
+- It tracks aggregate statistics such as total requests, allowed and blocked requests, bytes transferred, request rate, and frequently accessed hosts.
+- Metrics are updated during request processing and written to a dedicated `metrics.txt` file. 
+- Unlike logs, metrics represent **current state rather than historical events** and are refreshed when the server starts. This ensures that each server run begins with a clean metrics view.
+
+Example:
+
+```bash
+total_requests=10
+allowed_requests=8
+blocked_requests=2
+bytes_transferred=15640
+requests_per_minute=12.4
+top_hosts=example.com(6), google.com(2), github.com(2)
+```
+
+
+
+
 
 
