@@ -80,7 +80,7 @@ Multiple worker threads execute this flow concurrently, allowing the server to h
 
 ---
 
-### Rationale: Advantages and Disadvantages
+### Rationale: Advantages and Trade-offs
 
 **Advantages**
 
@@ -101,4 +101,56 @@ Multiple worker threads execute this flow concurrently, allowing the server to h
 ---
 
 This concurrency model was chosen to prioritize **correctness, clarity, and robustness** over maximum throughput, while still providing true parallel request handling.
+
+---
+## Request and Data Flow
+
+This section describes how data flows through the proxy server during request handling, from the moment a client connection is accepted to the completion of outbound forwarding or tunneling. The flow is divided into logical phases to reflect responsibility boundaries within the system.
+
+---
+
+### Connection Acceptance and Assignment
+
+-When a client initiates a TCP connection to the proxy, the main server thread accepts the connection on the listening socket. The accepted socket is wrapped as a task and enqueued into the shared task queue managed by the thread pool.
+
+-An available worker thread dequeues the task and assumes exclusive ownership of the client connection for its entire lifetime. From this point onward, all processing occurs within the context of that worker thread.
+
+---
+
+### Request Reading and Parsing
+
+-The worker thread reads data from the client socket using blocking I/O. Since TCP is a stream-oriented protocol, the worker explicitly handles partial reads and assembles incoming data until a complete HTTP request header is received.
+
+-Once sufficient data is available, the HTTP request is parsed to extract essential fields such as the request method, target host, port, and request path. Requests that are malformed or incomplete are rejected early, and the connection is closed without initiating any outbound communication.
+
+---
+
+### Policy Evaluation
+
+-After successful parsing, the extracted destination host is evaluated against the configured blocklist. This policy check determines whether the request is permitted to proceed.
+
+-If the request is blocked, the worker sends an appropriate error response (for example, `403 Forbidden`) to the client and terminates the connection. If the request is allowed, processing continues to outbound communication.
+
+---
+
+### Outbound Communication
+
+The outbound handling phase depends on the request type.
+
+-For **HTTP requests**, the worker establishes a TCP connection to the upstream server and forwards the rewritten request using HTTP/1.0 semantics. The response from the upstream server is read incrementally and relayed back to the client, with partial writes handled explicitly. Once the response is fully transmitted, both connections are closed.
+
+-For **HTTPS CONNECT requests**, the worker establishes a TCP connection to the specified target host and port and responds to the client with a `200 Connection Established` message. The worker then enters a bidirectional tunneling phase, transparently forwarding raw bytes between client and server without inspecting or modifying encrypted data. The tunnel remains active until either side closes the connection or a timeout occurs.
+
+---
+
+### Completion, Logging, and Metrics
+
+-After request processing completes—whether due to normal completion, error, or timeout—the worker performs cleanup operations. Client and upstream sockets are closed, and runtime metrics such as request counts and bytes transferred are updated.
+
+-A structured log entry is written to record the outcome of the request. The worker then returns to the task queue, ready to process the next client connection.
+
+---
+
+This staged data flow ensures that request handling is predictable and failures are contained within individual connections without affecting the overall stability of the proxy server.
+
 
