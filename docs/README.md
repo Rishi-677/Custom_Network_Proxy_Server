@@ -88,7 +88,7 @@ Clone the repository to your local machine:
 
 ```bash
 git clone https://github.com/Rishi-677/Custom_Network_Proxy_Server.git
-cd proxy-server
+cd Custom_Network_Proxy_Server
 ```
 
 The repository will be cloned locally, and the project directory is named `proxy-server`.
