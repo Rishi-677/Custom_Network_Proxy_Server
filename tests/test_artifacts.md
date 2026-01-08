@@ -167,30 +167,7 @@ After the configured socket timeout expires, the server closes the connection au
 
 ---
 
-## 6. Graceful Shutdown
-
-**Purpose**  
-Verify that the server shuts down cleanly while allowing active requests to complete.
-
-**Test Command**
-```bash
-Press `Ctrl+C` in the terminal where the proxy server is running.
-```
-
-**Observed Behavior**
-
-The server stops accepting new connections, completes active requests, flushes logs and metrics, and exits cleanly.
-
-**Log Output**
-```bash
-[2026-01-08 20:00:46] ==================================================
-[2026-01-08 20:00:46] SERVER STOP
-[2026-01-08 20:00:46] ==================================================
-```
-
----
-
-## 7. Handling of Malinformed Requests
+## 6. Handling of Malinformed Requests
 
 **Purpose**  
 Ensure malformed or invalid HTTP requests are safely rejected without affecting server stability.
@@ -213,6 +190,31 @@ GET /
 The server closes the connection without forwarding the request upstream.
 
 ---
+
+## 7. Graceful Shutdown
+
+**Purpose**  
+Verify that the server shuts down cleanly while allowing active requests to complete.
+
+**Test Command**
+```bash
+Press `Ctrl+C` in the terminal where the proxy server is running.
+```
+
+**Observed Behavior**
+
+The server stops accepting new connections, completes active requests, flushes logs and metrics, and exits cleanly.
+
+**Log Output**
+```bash
+[2026-01-08 20:00:46] ==================================================
+[2026-01-08 20:00:46] SERVER STOP
+[2026-01-08 20:00:46] ==================================================
+```
+
+---
+
+
 
 
 
