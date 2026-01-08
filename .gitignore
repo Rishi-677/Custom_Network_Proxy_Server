@@ -6,10 +6,6 @@ proxy
 build/
 *.o
 
-# logs & runtime files
-*.log
-metrics.txt
-
 # editor / OS noise
 .vscode/
 .idea/
