@@ -166,7 +166,7 @@ After the configured socket timeout expires, the server closes the connection au
 
 ---
 
-## 6. Handling of Malinformed Requests
+## 6. Handling of Malformed Requests
 
 **Purpose**  
 Ensure malformed or invalid HTTP requests are safely rejected without affecting server stability.
