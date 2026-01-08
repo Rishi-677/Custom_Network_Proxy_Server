@@ -129,7 +129,7 @@ Demonstrate that multiple client requests are handled concurrently using the thr
 **Test Command**
 ```bash
 for i in {1..25}; do
-  curl -x http://localhost:8080 http://example.com &
+  curl -x http://localhost:8080 http://example.com 
 done
 ```
 
