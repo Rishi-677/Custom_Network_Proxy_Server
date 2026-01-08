@@ -1,0 +1,6 @@
+total_requests=32
+allowed_requests=29
+blocked_requests=3
+bytes_transferred=33191
+requests_per_min=23.6014
+top_hosts=example.com(29) 

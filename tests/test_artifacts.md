@@ -129,10 +129,9 @@ Demonstrate that multiple client requests are handled concurrently using the thr
 **Test Command**
 ```bash
 for i in {1..25}; do
-  curl -s -x http://127.0.0.1:8080 http://example.com &
+  curl -x http://localhost:8080 http://example.com &
 done
 wait
-
 ```
 
 **Observed Behavior**
@@ -198,14 +197,15 @@ Ensure malformed or invalid HTTP requests are safely rejected without affecting 
 
 **Test Command**
 
-This request has missing HTTP version
 ```bash
-printf "GET /\r\nHost: example.com\r\n\r\n" | nc 127.0.0.1 8080
+telnet localhost 8080
 ```
 
-This request has no request line
+After connection , run the the command given below within 5 seconds (To avoid Time-Out)
+
+This request has missing HTTP version
 ```bash
-printf "\r\n\r\n" | nc 127.0.0.1 8080
+GET /
 ```
 
 **Observed Behavior**
