@@ -191,5 +191,28 @@ The server stops accepting new connections, completes active requests, flushes l
 
 ---
 
+## 7. Handling of Malinformed Requests
+
+**Purpose**  
+Ensure malformed or invalid HTTP requests are safely rejected without affecting server stability.
+
+**Test Command**
+
+This request has missing HTTP version
+```bash
+printf "GET /\r\nHost: example.com\r\n\r\n" | nc 127.0.0.1 8080
+```
+
+This request has no request line
+```bash
+printf "\r\n\r\n" | nc 127.0.0.1 8080
+```
+
+**Observed Behavior**
+
+The server closes the connection without forwarding the request upstream.
+
+---
+
 
 

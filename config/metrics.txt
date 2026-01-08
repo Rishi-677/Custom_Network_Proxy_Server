@@ -1,6 +1,6 @@
-total_requests=1
+total_requests=0
 allowed_requests=0
-blocked_requests=1
+blocked_requests=0
 bytes_transferred=0
-requests_per_min=3.76199
+requests_per_min=0
 top_hosts=
