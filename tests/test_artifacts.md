@@ -15,6 +15,7 @@ curl -x http://127.0.0.1:8080 http://example.com
 ```
 
 **Observed Behavior**
+
 The client receives the HTTP response from the upstream server and the request completes successfully.
 
 **Log Output**
@@ -28,6 +29,7 @@ curl -x http://127.0.0.1:8080 http://example.com/index.html
 ```
 
 **Observed Behavior**
+
 The proxy forwards the request with the correct path, and the client receives the expected resource.
 
 **Log Output**
@@ -37,7 +39,7 @@ The proxy forwards the request with the correct path, and the client receives th
 
 ---
 
-## 1. HTTPS Request Tunneling
+## 2. HTTPS Request Tunneling
 
 **Purpose**  
 Verify that HTTPS traffic is tunneled using the CONNECT method without decrypting or inspecting encrypted data.
@@ -48,6 +50,7 @@ curl -x http://127.0.0.1:8080 https://example.com
 ```
 
 **Observed Behavior**
+
 The TLS handshake completes successfully and the HTTPS response is returned to the client.
 
 **Log Output**
@@ -61,6 +64,7 @@ curl -x http://127.0.0.1:8080 https://example.com/docs
 ```
 
 **Observed Behavior**
+
 The proxy establishes a tunnel using CONNECT and transparently forwards encrypted traffic containing the explicit path.
 
 **Log Output**
@@ -69,8 +73,82 @@ The proxy establishes a tunnel using CONNECT and transparently forwards encrypte
 ```
 
 ---
+## 3. Blocking Domains and Sub-Domains
 
+**Purpose**  
+To verify that the proxy enforces domain-based blocking rules and prevents requests to configured blacklisted domains.
 
+**Command-Domain Blocking**
+```bash
+curl -x http://127.0.0.1:8080 http://blocked.com
+```
+
+**Observed Behavior**
+
+The proxy rejects the request and does not contact the upstream server.
+
+**Log Output**
+```bash
+[2026-01-05 14:12:10] 127.0.0.1:53438 | "GET / HTTP/1.0" | blocked.com:80 | BLOCKED | 403 | bytes=0
+```
+
+**Command- Sub-Domain Blocking**
+```bash
+curl -x http://127.0.0.1:8080 http://asinth.blocked.com
+```
+
+**Observed Behavior**
+
+The proxy identifies the subdomain match and blocks the request.
+
+**Log Output**
+```bash
+[2026-01-05 14:12:35] 127.0.0.1:53441 | "GET / HTTP/1.0" | asinth.blocked.com:80 | BLOCKED | 403 | bytes=0
+```
+
+**Command- HTTPS Sub-Domain Blocking**
+```bash
+curl -x http://127.0.0.1:8080 https://secure.blocked.com
+```
+
+**Observed Behavior**
+
+The proxy rejects the CONNECT request and no tunnel is established.
+
+**Log Output**
+```bash
+[2026-01-05 14:13:01] 127.0.0.1:53445 | "CONNECT HTTP/1.0" | secure.blocked.com:443 | BLOCKED | 403 | bytes=0
+```
+
+---
+## 4. Concurrent Request Handling
+
+**Purpose**  
+Demonstrate that multiple client requests are handled concurrently using the thread pool.
+
+**Test Command**
+```bash
+for i in {1..25}; do
+  curl -s -x http://127.0.0.1:8080 http://example.com &
+done
+wait
+
+```
+
+**Observed Behavior**
+
+Multiple requests execute in parallel. The server remains responsive, and all requests complete successfully.
+
+**Log Output**
+Following but repeated 5 times:
+```bash
+[2026-01-05 14:13:40] 127.0.0.1:53501 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1248
+[2026-01-05 14:13:40] 127.0.0.1:53504 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1251
+[2026-01-05 14:13:41] 127.0.0.1:53507 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1249
+[2026-01-05 14:13:40] 127.0.0.1:53504 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1251
+[2026-01-05 14:13:41] 127.0.0.1:53507 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1249
+```
+---
 
 
 
