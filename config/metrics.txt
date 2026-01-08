@@ -1,6 +1,6 @@
-total_requests=10
-allowed_requests=10
-blocked_requests=0
-bytes_transferred=7820
-requests_per_min=64.7769
-top_hosts=example.com(10) 
+total_requests=1
+allowed_requests=0
+blocked_requests=1
+bytes_transferred=0
+requests_per_min=3.76199
+top_hosts=

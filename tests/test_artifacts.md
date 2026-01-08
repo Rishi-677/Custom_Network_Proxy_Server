@@ -140,6 +140,7 @@ wait
 Multiple requests execute in parallel. The server remains responsive, and all requests complete successfully.
 
 **Log Output**
+
 Following but repeated 5 times:
 ```bash
 [2026-01-05 14:13:40] 127.0.0.1:53501 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1248
@@ -148,6 +149,46 @@ Following but repeated 5 times:
 [2026-01-05 14:13:40] 127.0.0.1:53504 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1251
 [2026-01-05 14:13:41] 127.0.0.1:53507 | "GET / HTTP/1.0" | example.com:80 | ALLOWED | 200 | bytes=1249
 ```
+---
+
+## 5. Socket Timeout Handling (Idle client)
+
+**Purpose**  
+Verify that idle or stalled client connections do not block worker threads indefinitely.
+
+**Test Command**
+```bash
+nc -v localhost 8080 < /dev/null
+
+```
+
+**Observed Behavior**
+
+After the configured socket timeout expires, the server closes the connection automatically.
+
+---
+
+## 6. Graceful Shutdown
+
+**Purpose**  
+Verify that the server shuts down cleanly while allowing active requests to complete.
+
+**Test Command**
+```bash
+Press `Ctrl+C` in the terminal where the proxy server is running.
+```
+
+**Observed Behavior**
+
+The server stops accepting new connections, completes active requests, flushes logs and metrics, and exits cleanly.
+
+**Log Output**
+```bash
+[2026-01-08 20:00:46] ==================================================
+[2026-01-08 20:00:46] SERVER STOP
+[2026-01-08 20:00:46] ==================================================
+```
+
 ---
 
 
